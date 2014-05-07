@@ -513,7 +513,13 @@ module ActiveRecord
           end
 
           def connection_active?
-            @connection.status == PGconn::CONNECTION_OK
+            # as described in
+            # https://github.com/rails/rails/issues/12867, we need to
+            # execute an actual DB query here since connect_poll is
+            # not sufficient for detecting an inactive connection that
+            # has been closed by the other end
+            @connection.query 'SELECT 1'
+            true
           rescue PGError
             false
           end
