@@ -513,13 +513,7 @@ module ActiveRecord
           end
 
           def connection_active?
-            # as described in
-            # https://github.com/rails/rails/issues/12867, we need to
-            # execute an actual DB query here since connect_poll is
-            # not sufficient for detecting an inactive connection that
-            # has been closed by the other end
-            @connection.query 'SELECT 1'
-            true
+            @connection.status == PGconn::CONNECTION_OK
           rescue PGError
             false
           end
@@ -565,9 +559,19 @@ module ActiveRecord
 
       # Is this connection alive and ready for queries?
       def active?
-        @connection.connect_poll != PG::PGRES_POLLING_FAILED
+        # as described in
+        # https://github.com/rails/rails/issues/12867, we need to
+        # execute an actual DB query here since connect_poll is
+        # not sufficient for detecting an inactive connection that
+        # has been closed by the other end
+        @connection.query 'SELECT 1'
+        true
       rescue PGError
         false
+      end
+
+      def active_threadsafe?
+        @connection.connect_poll != PG::PGRES_POLLING_FAILED
       end
 
       # Close then reopen the connection.
